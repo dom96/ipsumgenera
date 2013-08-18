@@ -1,0 +1,12 @@
+#! stdtmpl
+#proc renderArticles(articles: seq[TArticleMetadata]): string =
+#  result = ""
+<table id="articles">
+#  for a in articles:
+    <tr>
+      <td><a href="${a.genURL}">${a.title}</a></td>
+      <td class="date">${format(a.date, "dd/MM/yyyy hh:mm")}</td>
+    </tr>
+#  end for
+</table>
+#end proc
