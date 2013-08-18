@@ -1,4 +1,4 @@
-import rst, rstast, strutils, htmlgen, highlite
+import rst, rstast, strutils, htmlgen, highlite, xmltree
 
 proc strRst(node: PRstNode, indent: int = 0): string =
   result = ""
@@ -35,7 +35,8 @@ proc renderCodeBlock(n: PRstNode): string =
       of gtNone, gtWhitespace:
         add(result, substr(m.text, g.start, g.length + g.start - 1))
       else:
-        result.add span(class=tokenClassToStr[g.kind].toLower(), substr(m.text, g.start, g.length+g.start-1))
+        result.add span(class=tokenClassToStr[g.kind],
+            xmltree.escape(substr(m.text, g.start, g.length+g.start-1)))
     deinitGeneralTokenizer(g)
   result.add "</pre>"
 

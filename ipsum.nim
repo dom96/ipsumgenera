@@ -1,9 +1,6 @@
-import os, times, strutils, algorithm
+import os, times, strutils, algorithm, strtabs, parseutils
 
 import src/metadata, src/rstrender
-
-const
-  
 
 proc normalizeTitle(title: string): string =
   result = ""
@@ -31,16 +28,44 @@ proc findArticles(): seq[string] =
 
 include "layouts/articles.html" # TODO: Rename to articlelist.html?
 
+proc replaceKeys(s: string, kv: PStringTable): string =
+  result = ""
+  var i = 0
+  while true:
+    case s[i]
+    of '\\':
+      if s[i+1] == '$':
+        result.add("$")
+        i.inc 2
+      else:
+        result.add(s[i])
+        i.inc
+    of '$':
+      assert s[i+1] == '{'
+      let key = captureBetween(s, '{', '}', i)
+      if not hasKey(kv, key):
+        raise newException(EInvalidValue, "Key not found: " & key)
+      result.add(kv[key])
+      i.inc key.len + 3
+    of '\0':
+      break
+    else:
+      result.add s[i]
+      i.inc
+
 proc generateDefault(mds: seq[TArticleMetadata]) =
   let def = readFile(getCurrentDir() / "layouts" / "default.html")
-  let output = def % [renderArticles(mds)]
+  let output = replaceKeys(def,
+      {"body": renderArticles(mds), "prefix": ""}.newStringTable())
   writeFile(getCurrentDir() / "output" / "index.html", output)
 
 proc generateArticle(filename: string, meta: TArticleMetadata, metadataEnd: int) =
   let def = readFile(getCurrentDir() / "layouts" / "article.html")
   let date = format(meta.date, "dd/MM/yyyy hh:mm")
   let rst = readFile(filename)[metadataEnd .. -1]
-  let output = def % [meta.title, date, renderRst(rst)]
+  let output = replaceKeys(def,
+      {"title": meta.title, "date": date, "body": renderRst(rst),
+       "prefix": "../../../"}.newStringTable())
   let path = getCurrentDir() / "output" / genURL(meta)
   createDir(path.splitFile.dir)
   
@@ -56,6 +81,7 @@ proc processArticles(): seq[TArticleMetadata] =
     result.add(meta)
     generateArticle(i, meta, metadataEnd)
 
+  # Sort articles from newest to oldest.
   result.sort do (x, y: TArticleMetadata) -> int:
     if TimeInfoToTime(x.date) > TimeInfoToTime(y.date):
       -1
