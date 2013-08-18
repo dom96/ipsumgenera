@@ -1,3 +1,6 @@
+# Copyright (C) 2013 Dominik Picheta
+# Licensed under MIT license.
+
 import os, times, strutils, algorithm, strtabs, parseutils
 
 import src/metadata, src/rstrender

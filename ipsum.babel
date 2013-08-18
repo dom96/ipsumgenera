@@ -1,0 +1,8 @@
+[Package]
+name          = "ipsumgenera"
+version       = "0.1.0"
+author        = "Dominik Picheta"
+description   = "A static blog generator."
+license       = "MIT"
+
+bin = "ipsum"
