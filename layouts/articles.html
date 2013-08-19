@@ -10,3 +10,10 @@
 #  end for
 </table>
 #end proc
+#
+#proc renderTags(tags: seq[string], prefix: string): string =
+#  result = ""
+#  for t in tags:
+    <a href="${prefix}tags/${t.normalizeTag}">${t}</a>
+#  end for
+#end proc

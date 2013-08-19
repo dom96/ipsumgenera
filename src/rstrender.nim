@@ -74,7 +74,7 @@ proc renderRst(node: PRstNode): string =
     else:
       assert false, "Unknown headline level: " & $node.level
   of rnInlineLiteral:
-    result.add span(class="literal", renderSons(node))
+    result.add code(renderSons(node))
   of rnCodeBlock:
     result.add renderCodeBlock(node)
   else:

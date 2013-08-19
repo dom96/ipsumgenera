@@ -18,6 +18,15 @@ proc normalizeTitle(title: string): string =
     else:
       result.add i.toLower()
 
+proc normalizeTag(tag: string): string =
+  result = ""
+  for i in tag:
+    case i
+    of ' ':
+      result.add '-'
+    else:
+      result.add i.toLower()
+
 proc genURL(article: TArticleMetadata): string =
   # articles/2013/03/title.html
   "articles/" & format(article.date, "yyyy/MM/") &
@@ -62,13 +71,16 @@ proc generateDefault(mds: seq[TArticleMetadata]) =
       {"body": renderArticles(mds), "prefix": ""}.newStringTable())
   writeFile(getCurrentDir() / "output" / "index.html", output)
 
+const prefix = "../../../"
+
 proc generateArticle(filename: string, meta: TArticleMetadata, metadataEnd: int) =
   let def = readFile(getCurrentDir() / "layouts" / "article.html")
   let date = format(meta.date, "dd/MM/yyyy hh:mm")
   let rst = readFile(filename)[metadataEnd .. -1]
+  let tags = renderTags(meta.tags, prefix)
   let output = replaceKeys(def,
       {"title": meta.title, "date": date, "body": renderRst(rst),
-       "prefix": "../../../"}.newStringTable())
+       "prefix": prefix, "tags": tags}.newStringTable())
   let path = getCurrentDir() / "output" / genURL(meta)
   createDir(path.splitFile.dir)
   
