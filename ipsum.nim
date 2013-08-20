@@ -1,7 +1,7 @@
 # Copyright (C) 2013 Dominik Picheta
 # Licensed under MIT license.
 
-import os, times, strutils, algorithm, strtabs, parseutils
+import os, times, strutils, algorithm, strtabs, parseutils, tables
 
 import src/metadata, src/rstrender
 
@@ -68,24 +68,35 @@ proc replaceKeys(s: string, kv: PStringTable): string =
 proc generateDefault(mds: seq[TArticleMetadata]) =
   let def = readFile(getCurrentDir() / "layouts" / "default.html")
   let output = replaceKeys(def,
-      {"body": renderArticles(mds), "prefix": ""}.newStringTable())
+      {"body": renderArticles(mds, ""), "prefix": ""}.newStringTable())
   writeFile(getCurrentDir() / "output" / "index.html", output)
 
-const prefix = "../../../"
+const
+  articlePagePrefix = "../../../"
+  tagPagePrefix = "../"
 
 proc generateArticle(filename: string, meta: TArticleMetadata, metadataEnd: int) =
   let def = readFile(getCurrentDir() / "layouts" / "article.html")
   let date = format(meta.date, "dd/MM/yyyy hh:mm")
   let rst = readFile(filename)[metadataEnd .. -1]
-  let tags = renderTags(meta.tags, prefix)
+  let tags = renderTags(meta.tags, articlePagePrefix)
   let output = replaceKeys(def,
       {"title": meta.title, "date": date, "body": renderRst(rst),
-       "prefix": prefix, "tags": tags}.newStringTable())
+       "prefix": articlePagePrefix, "tags": tags}.newStringTable())
   let path = getCurrentDir() / "output" / genURL(meta)
   createDir(path.splitFile.dir)
   
   writeFile(path, output)
-  
+
+proc sortArticles(articles: var seq[TArticleMetadata]) =
+  articles.sort do (x, y: TArticleMetadata) -> int:
+    if TimeInfoToTime(x.date) > TimeInfoToTime(y.date):
+      -1
+    elif TimeInfoToTime(x.date) == TimeInfoToTime(y.date):
+      0
+    else:
+      1
+
 proc processArticles(): seq[TArticleMetadata] =
   result = @[]
   let articleFilenames = findArticles()
@@ -97,14 +108,32 @@ proc processArticles(): seq[TArticleMetadata] =
     generateArticle(i, meta, metadataEnd)
 
   # Sort articles from newest to oldest.
-  result.sort do (x, y: TArticleMetadata) -> int:
-    if TimeInfoToTime(x.date) > TimeInfoToTime(y.date):
-      -1
-    elif TimeInfoToTime(x.date) == TimeInfoToTime(y.date):
-      0
-    else:
-      1
+  sortArticles(result)
+
+proc generateTagPages(meta: seq[TArticleMetadata]) =
+  var tags = initTable[string, seq[TArticleMetadata]]()
+  for a in meta:
+    for t in a.tags:
+      let nt = t.normalizeTag
+      if not tags.hasKey(nt):
+        tags[nt] = @[]
+      tags.mget(nt).add(a)
+    
+  
+  let templ = readFile(getCurrentDir() / "layouts" / "tag.html")
+  createDir(getCurrentDir() / "output" / "tags")
+  for tag, articles in tags:
+    var sorted = articles
+    sortArticles(sorted)
+    let output = replaceKeys(templ,
+      {"body": renderArticles(sorted, tagPagePrefix), "tag": tag,
+       "prefix": tagPagePrefix}.newStringTable())
+    writeFile(getCurrentDir() / "output" / "tags" / tag, output)
+  
 
 when isMainModule:
   createDir(getCurrentDir() / "output")
-  generateDefault(processArticles())
+  let articles = processArticles()
+  generateDefault(articles)
+  generateTagPages(articles)
+  

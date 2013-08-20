@@ -1,10 +1,10 @@
 #! stdtmpl
-#proc renderArticles(articles: seq[TArticleMetadata]): string =
+#proc renderArticles(articles: seq[TArticleMetadata], prefix: string): string =
 #  result = ""
 <table id="articles">
 #  for a in articles:
     <tr>
-      <td><a href="${a.genURL}">${a.title}</a></td>
+      <td><a href="${prefix}${a.genURL}">${a.title}</a></td>
       <td class="date">${format(a.date, "dd/MM/yyyy hh:mm")}</td>
     </tr>
 #  end for
@@ -13,7 +13,8 @@
 #
 #proc renderTags(tags: seq[string], prefix: string): string =
 #  result = ""
-#  for t in tags:
-    <a href="${prefix}tags/${t.normalizeTag}">${t}</a>
+#  for i in 0..tags.len-1:
+    <a href="${prefix}tags/${tags[i].normalizeTag}">${tags[i]}</a>
+    ${if i < tags.len-1: "," else: ""}
 #  end for
 #end proc
