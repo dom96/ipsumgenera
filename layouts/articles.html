@@ -14,7 +14,7 @@
 #proc renderTags(tags: seq[string], prefix: string): string =
 #  result = ""
 #  for i in 0..tags.len-1:
-    <a href="${prefix}tags/${tags[i].normalizeTag}">${tags[i]}</a>
+    <a href="${prefix}tags/${tags[i].normalizeTag}.html">${tags[i]}</a>
     ${if i < tags.len-1: "," else: ""}
 #  end for
 #end proc

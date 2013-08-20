@@ -128,7 +128,8 @@ proc generateTagPages(meta: seq[TArticleMetadata]) =
     let output = replaceKeys(templ,
       {"body": renderArticles(sorted, tagPagePrefix), "tag": tag,
        "prefix": tagPagePrefix}.newStringTable())
-    writeFile(getCurrentDir() / "output" / "tags" / tag, output)
+    writeFile(getCurrentDir() / "output" / "tags" /
+              tag.addFileExt("html"), output)
   
 
 when isMainModule:
