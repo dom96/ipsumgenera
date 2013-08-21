@@ -5,6 +5,7 @@ type
     title*: string
     date*: TTimeInfo
     tags*: seq[string]
+    body*: string
 
 proc parseDate(val: string): TTimeInfo =
   # YYYY-mm-dd hh:mm
@@ -33,8 +34,9 @@ proc parseDate(val: string): TTimeInfo =
   let t = TimeInfoToTime(result)
   result = getGMTime(t)
 
-proc parseMetadata*(filename: string, i: var int): TArticleMetadata =
+proc parseMetadata*(filename: string): TArticleMetadata =
   let article = readFile(filename)
+  var i = 0
   i.inc skip(article, "---", i)
   if i == 0:
     raise newException(EInvalidValue,
@@ -72,4 +74,4 @@ proc parseMetadata*(filename: string, i: var int): TArticleMetadata =
       raise newException(EInvalidValue, "Unknown key: " & key)
   i.inc 3 # skip ---
   i.inc skipWhitespace(article, i)
-  
+  result.body = article[i .. -1]

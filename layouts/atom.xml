@@ -1,0 +1,25 @@
+#! stdtmpl
+#proc renderAtom(meta: seq[TArticleMetadata], title, url, feedUrl, author: string): string =
+#   result = ""
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>${title}</title>
+  <link href="${url}" />
+  <link href="${feedUrl}" rel="self" />
+  <id>${url}</id>
+  <generator>ipsumgenera</generator>
+  <updated>${getTime().getGMTime().format("yyyy-MM-dd'T'HH:mm:ss'Z'")}</updated>
+# for a in meta:
+    <entry>
+      <title>${a.title}</title>
+      <link rel="alternate" type="text/html" href="${url & genURL(a)}"/>
+      <id>${url & genURL(a)}</id>
+      <updated>${a.date.format("yyyy-MM-dd'T'HH:mm:ss'Z'")}</updated>
+      <author><name>${author}</name></author>
+      <content type="html">
+        ${xmltree.escape(renderRst(a.body))}
+      </content>
+    </entry>
+# end for
+</feed>
+#end proc

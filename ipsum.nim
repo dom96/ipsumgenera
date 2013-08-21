@@ -1,9 +1,9 @@
 # Copyright (C) 2013 Dominik Picheta
 # Licensed under MIT license.
 
-import os, times, strutils, algorithm, strtabs, parseutils, tables
+import os, times, strutils, algorithm, strtabs, parseutils, tables, xmltree
 
-import src/metadata, src/rstrender
+import src/metadata, src/rstrender, src/config
 
 proc normalizeTitle(title: string): string =
   result = ""
@@ -27,10 +27,20 @@ proc normalizeTag(tag: string): string =
     else:
       result.add i.toLower()
 
-proc genURL(article: TArticleMetadata): string =
+proc joinUrl(x: varargs[string]): string =
+  result = ""
+  for i in x:
+    var cleanI = i
+    if cleanI[0] == '/': cleanI = cleanI[1 .. -1]
+    if cleanI.endsWith("/"): cleanI = cleanI[0 .. -2]
+
+    result.add "/" & cleanI
+  result = result[1 .. -1] # Get rid of the / at the start.
+
+proc genUrl(article: TArticleMetadata): string =
   # articles/2013/03/title.html
-  "articles/" & format(article.date, "yyyy/MM/") &
-    article.title.normalizeTitle() & ".html"
+  joinUrl("articles", format(article.date, "yyyy/MM"),
+    article.title.normalizeTitle() & ".html")
 
 proc findArticles(): seq[string] =
   result = @[]
@@ -39,6 +49,7 @@ proc findArticles(): seq[string] =
     result.add(f)
 
 include "layouts/articles.html" # TODO: Rename to articlelist.html?
+include "layouts/atom.xml"
 
 proc replaceKeys(s: string, kv: PStringTable): string =
   result = ""
@@ -65,24 +76,31 @@ proc replaceKeys(s: string, kv: PStringTable): string =
       result.add s[i]
       i.inc
 
-proc generateDefault(mds: seq[TArticleMetadata]) =
+proc createKeys(otherKeys: varargs[tuple[k, v: string]],
+                cfg: TConfig): PStringTable =
+  result = newStringTable({"title": cfg.title, "url": cfg.url,
+      "author": cfg.author})
+  for i in otherKeys:
+    result[i.k] = i.v
+
+proc generateDefault(mds: seq[TArticleMetadata], cfg: TConfig) =
   let def = readFile(getCurrentDir() / "layouts" / "default.html")
   let output = replaceKeys(def,
-      {"body": renderArticles(mds, ""), "prefix": ""}.newStringTable())
+      {"body": renderArticles(mds, ""), "prefix": ""}.createKeys(cfg))
   writeFile(getCurrentDir() / "output" / "index.html", output)
 
 const
   articlePagePrefix = "../../../"
   tagPagePrefix = "../"
 
-proc generateArticle(filename: string, meta: TArticleMetadata, metadataEnd: int) =
+proc generateArticle(filename: string, meta: TArticleMetadata,
+                     cfg: TConfig) =
   let def = readFile(getCurrentDir() / "layouts" / "article.html")
   let date = format(meta.date, "dd/MM/yyyy hh:mm")
-  let rst = readFile(filename)[metadataEnd .. -1]
   let tags = renderTags(meta.tags, articlePagePrefix)
   let output = replaceKeys(def,
-      {"title": meta.title, "date": date, "body": renderRst(rst),
-       "prefix": articlePagePrefix, "tags": tags}.newStringTable())
+      {"title": meta.title, "date": date, "body": renderRst(meta.body),
+       "prefix": articlePagePrefix, "tags": tags}.createKeys(cfg))
   let path = getCurrentDir() / "output" / genURL(meta)
   createDir(path.splitFile.dir)
   
@@ -97,20 +115,19 @@ proc sortArticles(articles: var seq[TArticleMetadata]) =
     else:
       1
 
-proc processArticles(): seq[TArticleMetadata] =
+proc processArticles(cfg: TConfig): seq[TArticleMetadata] =
   result = @[]
   let articleFilenames = findArticles()
   for i in articleFilenames:
-    var metadataEnd = 0
     echo("Processing ", i)
-    let meta = parseMetadata(i, metadataEnd)
+    let meta = parseMetadata(i)
     result.add(meta)
-    generateArticle(i, meta, metadataEnd)
+    generateArticle(i, meta, cfg)
 
   # Sort articles from newest to oldest.
   sortArticles(result)
 
-proc generateTagPages(meta: seq[TArticleMetadata]) =
+proc generateTagPages(meta: seq[TArticleMetadata], cfg: TConfig) =
   var tags = initTable[string, seq[TArticleMetadata]]()
   for a in meta:
     for t in a.tags:
@@ -118,7 +135,6 @@ proc generateTagPages(meta: seq[TArticleMetadata]) =
       if not tags.hasKey(nt):
         tags[nt] = @[]
       tags.mget(nt).add(a)
-    
   
   let templ = readFile(getCurrentDir() / "layouts" / "tag.html")
   createDir(getCurrentDir() / "output" / "tags")
@@ -127,14 +143,19 @@ proc generateTagPages(meta: seq[TArticleMetadata]) =
     sortArticles(sorted)
     let output = replaceKeys(templ,
       {"body": renderArticles(sorted, tagPagePrefix), "tag": tag,
-       "prefix": tagPagePrefix}.newStringTable())
+       "prefix": tagPagePrefix}.createKeys(cfg))
     writeFile(getCurrentDir() / "output" / "tags" /
               tag.addFileExt("html"), output)
-  
+
+proc generateAtomFeed(meta: seq[TArticleMetadata], cfg: TConfig) =
+  let feed = renderAtom(meta, cfg.title, cfg.url, joinUrl(cfg.url, "feed.xml"),
+                        cfg.author)
+  writeFile(getCurrentDir() / "output" / "feed.xml", feed)
 
 when isMainModule:
+  let cfg = parseConfig(getCurrentDir() / "ipsum.ini")
   createDir(getCurrentDir() / "output")
-  let articles = processArticles()
-  generateDefault(articles)
-  generateTagPages(articles)
-  
+  let articles = processArticles(cfg)
+  generateDefault(articles, cfg)
+  generateTagPages(articles, cfg)
+  generateAtomFeed(articles, cfg)
