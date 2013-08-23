@@ -96,7 +96,7 @@ const
 proc generateArticle(filename: string, meta: TArticleMetadata,
                      cfg: TConfig) =
   let def = readFile(getCurrentDir() / "layouts" / "article.html")
-  let date = format(meta.date, "dd/MM/yyyy hh:mm")
+  let date = format(meta.date, "dd/MM/yyyy HH:mm")
   let tags = renderTags(meta.tags, articlePagePrefix)
   let output = replaceKeys(def,
       {"title": meta.title, "date": date, "body": renderRst(meta.body),
