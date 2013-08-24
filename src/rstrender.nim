@@ -77,9 +77,17 @@ proc renderRst(node: PRstNode): string =
     result.add code(renderSons(node))
   of rnCodeBlock:
     result.add renderCodeBlock(node)
+  of rnTransition:
+    result.add hr()
+  of rnBlockquote:
+    result.add blockquote(renderSons(node))
+  of rnBulletList:
+    result.add ul(renderSons(node))
+  of rnBulletItem:
+    result.add li(renderSons(node))
   else:
-    echo(node.kind)
-    assert false
+    echo("Unknown node kind in rst: ", node.kind)
+    doAssert false
 
 proc renderRst*(text: string, filename = ""): string =
   result = ""
