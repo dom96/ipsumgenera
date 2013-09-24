@@ -84,4 +84,4 @@ be generated before you can even blink!
 
 ## License
 
-MIT
+[MIT license](LICENSE.md).
