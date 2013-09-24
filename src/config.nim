@@ -1,4 +1,4 @@
-import parsecfg, streams, strutils
+import parsecfg, streams, strutils, os
 
 type
   TConfig* = object
@@ -23,6 +23,8 @@ proc validateConfig(config: TConfig) =
     ra("url")
 
 proc parseConfig*(filename: string): TConfig =
+  if not filename.existsFile:
+    raise newException(EInvalidValue, "Missing '" & filename & "'")
   result = initConfig()
   var file = newFileStream(filename, fmRead)
   var cfg: TCfgParser
