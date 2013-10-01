@@ -7,15 +7,32 @@ may just be willing to make this more user friendly.
 
 ## Quick manual
 
+To set up *ipsum* you first need to install [nimrod's babel package
+manager](https://github.com/nimrod-code/babel). Once you have that installed
+you can run:
+
 ```
 git clone https://github.com/dom96/ipsumgenera
 cd ipsumgenera
 babel install
-mkdir articles
-mkdir layouts
 ```
 
-Put articles in the 'articles' folder with metadata similar to jekyll's:
+This will compile *ipsum* and copy it to your ``$babelDir/bin/`` directory. Add
+this directory to your ``$PATH`` environment variable so you can run *ipsum*
+anywhere.  In the future if you need to update your *ipsum* version you will
+need to refresh that checkout and run ``babel install`` again to overwrite your
+current copy.
+
+Now, go to the directory of your choice for storing your own website and
+create the structure to hold your content:
+
+```
+cd ~/projects
+mkdir -p super_website/articles super_website/layouts
+cd super_website
+```
+
+Put articles in the ``articles`` folder with metadata similar to jekyll's:
 ```
 ---
 title: "GTK+: I love GTK and here is why."
@@ -24,8 +41,9 @@ tags: Nimrod, GTK
 ---
 ```
 
-Save the article as: ``2013-08-18-gtk-plus-i-love-gtk-and-here-is-why.rst``,
-or something else, the filename doesn't really matter, *ipsum* does not care.
+Save the article as: ``2013-08-18-gtk-plus-i-love-gtk-and-here-is-why.rst``, or
+something else, the filename doesn't really matter, *ipsum* does not care as
+long as they have an ``rst`` extension. All other extension files are ignored.
 
 You then need to create some layouts and put them into the layouts folder.
 You will need the following layouts:
@@ -36,17 +54,18 @@ You will need the following layouts:
 * tag.html -- Template for the specific tag page, this will include a list of
   articles belonging to a certain tag.
 
-Layouts are simply html templates,
-*ipsum* will replace a couple of specific strings in the html templates when
-it's generating your blog. The format of these strings is ${key}, and the
-supported keys are:
+Layouts are simply html templates, *ipsum* will replace a couple of specific
+strings in the html templates when it's generating your blog. The format of
+these strings is ${key}, and the supported keys are:
 
-* ``${body}`` -- In default.html this is the article list, in article.html
-  this will be the actual article text.
-* ``${title}`` -- Article title, article.html **only**.
-* ``${date}`` -- Article date, article.html **only**.
-* ``${prefix}`` -- The path to the root in article.html **only**.
-* ``${tag}`` -- The tag name, tag.html **only**.
+* ``${body}`` -- In ``default.html`` this is the article list, in
+  ``article.html`` this will be the actual article text.
+* ``${title}`` -- Article title in ``article.html``, otherwise the blog title
+  from ``ipsum.ini``.
+* ``${date}`` -- Article date in ``article.html`` extracted from the metadata.
+  The date has to be in format **YYYY-MM-DD hh:mm**.
+* ``${prefix}`` -- The path to the root in ``article.html`` **only**.
+* ``${tag}`` -- The tag name, ``tag.html`` **only**.
 
 You will also need to create an ``ipsum.ini`` file, the file should contain
 the following information:
@@ -65,4 +84,4 @@ be generated before you can even blink!
 
 ## License
 
-MIT
+[MIT license](LICENSE.md).

@@ -1,4 +1,8 @@
-nimcache
-output
-layouts/article.html
-layouts/default.html
+# Wildcard
+*.swp
+.DS_Store
+
+# Absolute paths
+/ipsum
+/nimcache
+/output
