@@ -45,7 +45,8 @@ proc renderRst(node: PRstNode): string =
   proc renderSons(father: PRstNode): string =
     result = ""
     for i in father.sons:
-      result.add renderRst(i)
+      if not i.isNil():
+        result.add renderRst(i)
   
   case node.kind
   of rnInner:
@@ -85,6 +86,10 @@ proc renderRst(node: PRstNode): string =
     result.add ul(renderSons(node))
   of rnBulletItem:
     result.add li(renderSons(node))
+  of rnImage:
+    result.add img(src=renderSons(node), alt="")
+  of rnDirArg:
+    result.add renderSons(node)
   else:
     echo("Unknown node kind in rst: ", node.kind)
     doAssert false
