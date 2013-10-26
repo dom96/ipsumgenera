@@ -78,8 +78,8 @@ proc replaceKeys(s: string, kv: PStringTable): string =
 
 proc createKeys(otherKeys: varargs[tuple[k, v: string]],
                 cfg: TConfig): PStringTable =
-  result = newStringTable({"title": cfg.title, "url": cfg.url,
-      "author": cfg.author})
+  result = newStringTable({"blog_title": cfg.title, "blog_url": cfg.url,
+      "blog_author": cfg.author})
   for i in otherKeys:
     result[i.k] = i.v
 
