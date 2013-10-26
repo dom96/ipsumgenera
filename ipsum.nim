@@ -99,7 +99,8 @@ proc generateArticle(filename: string, meta: TArticleMetadata,
   let date = format(meta.date, "dd/MM/yyyy HH:mm")
   let tags = renderTags(meta.tags, articlePagePrefix)
   let output = replaceKeys(def,
-      {"title": meta.title, "date": date, "body": renderRst(meta.body),
+      {"title": meta.title, "date": date, 
+       "body": renderRst(meta.body, articlePagePrefix),
        "prefix": articlePagePrefix, "tags": tags}.createKeys(cfg))
   let path = getCurrentDir() / "output" / genURL(meta)
   createDir(path.splitFile.dir)

@@ -40,13 +40,13 @@ proc renderCodeBlock(n: PRstNode): string =
     deinitGeneralTokenizer(g)
   result.add "</pre>"
 
-proc renderRst(node: PRstNode): string =
+proc renderRst(node: PRstNode, articlePrefix: string): string =
   result = ""
   proc renderSons(father: PRstNode): string =
     result = ""
     for i in father.sons:
       if not i.isNil():
-        result.add renderRst(i)
+        result.add renderRst(i, articlePrefix)
   
   case node.kind
   of rnInner:
@@ -87,20 +87,20 @@ proc renderRst(node: PRstNode): string =
   of rnBulletItem:
     result.add li(renderSons(node))
   of rnImage:
-    result.add img(src=renderSons(node), alt="")
+    result.add img(src=renderSons(node).replace("${prefix}", articlePrefix), alt="")
   of rnDirArg:
     result.add renderSons(node)
   else:
     echo("Unknown node kind in rst: ", node.kind)
     doAssert false
 
-proc renderRst*(text: string, filename = ""): string =
+proc renderRst*(text: string, articlePrefix: string, filename = ""): string =
   result = ""
   var hasToc = false
   var ast = rstParse(text, filename, 0, 0, hasToc,
                      {roSupportRawDirective, roSupportMarkdown})
   #echo strRst(ast)
-  result = renderRst(ast)
+  result = renderRst(ast, articlePrefix)
 
 when isMainModule:
   import os, metadata
