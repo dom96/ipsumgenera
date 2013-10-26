@@ -12,8 +12,8 @@
 # for a in meta:
     <entry>
       <title>${a.title}</title>
-      <link rel="alternate" type="text/html" href="${url & genURL(a)}"/>
-      <id>${url & genURL(a)}</id>
+      <link rel="alternate" type="text/html" href="${joinUrl(url, genURL(a))}"/>
+      <id>${joinUrl(url, genURL(a))}</id>
       <updated>${a.date.format("yyyy-MM-dd'T'HH:mm:ss'Z'")}</updated>
       <author><name>${author}</name></author>
       <content type="html">
