@@ -82,6 +82,13 @@ names match the names in the config file.
 Once you're done with the setup, simply execute ``ipsum`` and your blog should
 be generated before you can even blink!
 
+## Metadata reference
+
+* ``title`` - Article title.
+* ``date`` - Date the article was written.
+* ``tags`` - Tags belonging to the article.
+* ``draft`` - If ``true`` article will not be generated.
+
 ## License
 
 [MIT license](LICENSE.md).

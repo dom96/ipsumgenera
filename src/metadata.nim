@@ -5,6 +5,7 @@ type
     title*: string
     date*: TTimeInfo
     tags*: seq[string]
+    isDraft*: bool
     body*: string
 
 proc parseDate(val: string): TTimeInfo =
@@ -70,6 +71,9 @@ proc parseMetadata*(filename: string): TArticleMetadata =
       result.tags = @[]
       for i in value.split(','):
         result.tags.add(i.strip)
+    of "draft":
+      let vn = value.normalize
+      result.isDraft = vn in ["t", "true", "y", "yes"]
     else:
       raise newException(EInvalidValue, "Unknown key: " & key)
   i.inc 3 # skip ---

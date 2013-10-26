@@ -121,6 +121,9 @@ proc processArticles(cfg: TConfig): seq[TArticleMetadata] =
   for i in articleFilenames:
     echo("Processing ", i)
     let meta = parseMetadata(i)
+    if meta.isDraft:
+      echo("  Article is a draft, skipping.")
+      continue
     result.add(meta)
     generateArticle(i, meta, cfg)
 
