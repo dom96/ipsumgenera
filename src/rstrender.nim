@@ -56,10 +56,11 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
   of rnLeaf:
     result.add node.text
   of rnStandaloneHyperlink:
-    let hyper = renderSons(node)
+    let hyper = renderSons(node).replace("${prefix}", articlePrefix)
     result.add a(href=hyper, hyper)
   of rnHyperLink:
-    result.add a(href=renderSons(node.sons[1]), renderSons(node.sons[0]))
+    let hyper = renderSons(node.sons[1]).replace("${prefix}", articlePrefix)
+    result.add a(href=hyper, renderSons(node.sons[0]))
   of rnEmphasis:
     result.add span(style="font-style: italic;", renderSons(node))
   of rnStrongEmphasis:
@@ -87,7 +88,8 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
   of rnBulletItem:
     result.add li(renderSons(node))
   of rnImage:
-    result.add img(src=renderSons(node).replace("${prefix}", articlePrefix), alt="")
+    let src = renderSons(node).replace("${prefix}", articlePrefix)
+    result.add img(src=src, alt="")
   of rnDirArg:
     result.add renderSons(node)
   else:
