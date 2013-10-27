@@ -1,4 +1,4 @@
-import rst, rstast, strutils, htmlgen, highlite, xmltree
+import rst, rstast, strutils, htmlgen, highlite, xmltree, strtabs
 
 proc strRst(node: PRstNode, indent: int = 0): string =
   result = ""
@@ -39,6 +39,18 @@ proc renderCodeBlock(n: PRstNode): string =
             xmltree.escape(substr(m.text, g.start, g.length+g.start-1)))
     deinitGeneralTokenizer(g)
   result.add "</pre>"
+
+proc renderRst(node: PRstNode, articlePrefix: string): string
+proc getFieldList(node: PRstNode, articlePrefix: string): PStringTable =
+  assert node.kind == rnFieldList
+  result = newStringTable()
+  for field in node.sons:
+    assert field.kind == rnField
+    assert field.sons[0].kind == rnFieldName
+    assert field.sons[1].kind == rnFieldBody
+    let name = renderRst(field.sons[0], articlePrefix)
+    let value = renderRst(field.sons[1], articlePrefix)
+    result[name] = value
 
 proc renderRst(node: PRstNode, articlePrefix: string): string =
   result = ""
@@ -88,10 +100,20 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
   of rnBulletItem:
     result.add li(renderSons(node))
   of rnImage:
-    let src = renderSons(node).replace("${prefix}", articlePrefix)
-    result.add img(src=src, alt="")
-  of rnDirArg:
-    result.add renderSons(node)
+    let src = renderSons(node.sons[0]).replace("${prefix}", articlePrefix)
+    if not node.sons[1].isNil() and node.sons[1].kind == rnFieldList:
+      let fieldList = getFieldList(node.sons[1], articlePrefix)
+      var style = ""
+      for k, v in pairs(fieldList):
+        case k
+        of "height", "width":
+          style.add("$1: $2;" % [k, v])
+        else: raise newException(EInvalidValue, "Invalid field name for image.")
+      result.add "<img src='$1' style='$2'/>" % [src, style]
+    else:
+      result.add img(src=src, alt="")
+  of rnFieldName, rnFieldBody:
+    result.add(renderSons(node))
   else:
     echo("Unknown node kind in rst: ", node.kind)
     doAssert false
