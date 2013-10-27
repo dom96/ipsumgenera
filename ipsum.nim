@@ -122,10 +122,10 @@ proc processArticles(cfg: TConfig): seq[TArticleMetadata] =
   for i in articleFilenames:
     echo("Processing ", i)
     let meta = parseMetadata(i)
-    if meta.isDraft:
-      echo("  Article is a draft, skipping.")
-      continue
-    result.add(meta)
+    if not meta.isDraft:
+      result.add(meta)
+    else:
+      echo("  Article is a draft, omitting from article list.")
     generateArticle(i, meta, cfg)
 
   # Sort articles from newest to oldest.
