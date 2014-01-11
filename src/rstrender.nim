@@ -40,6 +40,15 @@ proc renderCodeBlock(n: PRstNode): string =
     deinitGeneralTokenizer(g)
   result.add "</pre>"
 
+proc renderLiteralBlock(n: PRstNode): string =
+  result = ""
+  if len(n.sons) < 1: return
+  result.add "<pre class='literal'>"
+  for m in n.sons:
+    assert m.kind == rnLeaf
+    result.add m.text
+  result.add "</pre>"
+
 proc renderRst(node: PRstNode, articlePrefix: string): string
 proc getFieldList(node: PRstNode, articlePrefix: string): PStringTable =
   assert node.kind == rnFieldList
@@ -89,6 +98,8 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
       assert false, "Unknown headline level: " & $node.level
   of rnInlineLiteral:
     result.add code(renderSons(node))
+  of rnLiteralBlock:
+    result.add renderLiteralBlock(node)
   of rnCodeBlock:
     result.add renderCodeBlock(node)
   of rnTransition:
