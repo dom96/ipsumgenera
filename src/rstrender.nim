@@ -1,6 +1,7 @@
 import rst, rstast, strutils, htmlgen, highlite, xmltree, strtabs
 
 proc strRst(node: PRstNode, indent: int = 0): string =
+  ## Internal proc for debugging.
   result = ""
   result.add(repeatChar(indent) & $node.kind & "(t: " & (if node.text != nil: node.text else: "") & ", l=" & $node.level & ")" & "\n")
   if node.sons.len > 0:
@@ -10,6 +11,7 @@ proc strRst(node: PRstNode, indent: int = 0): string =
       result.add strRst(i, indent + 2)
 
 proc renderCodeBlock(n: PRstNode): string =
+  ## Renders a block with code syntax highlighting.
   result = ""
   if n.sons[2] == nil: return
   var m = n.sons[2].sons[0]
@@ -24,7 +26,7 @@ proc renderCodeBlock(n: PRstNode): string =
   result.add "<pre class='code'>"
   if lang == langNone:
     echo("[Warning] Unsupported language: " & langstr)
-    result.add(m.text)
+    result.add(xmltree.escape(m.text))
   else:
     var g: TGeneralTokenizer
     initGeneralTokenizer(g, m.text)
@@ -38,6 +40,16 @@ proc renderCodeBlock(n: PRstNode): string =
         result.add span(class=tokenClassToStr[g.kind],
             xmltree.escape(substr(m.text, g.start, g.length+g.start-1)))
     deinitGeneralTokenizer(g)
+  result.add "</pre>"
+
+proc renderLiteralBlock(n: PRstNode): string =
+  ## Renders a plain literal block.
+  result = ""
+  if len(n.sons) < 1: return
+  result.add "<pre class='literal'>"
+  for m in n.sons:
+    assert m.kind == rnLeaf
+    result.add(xmltree.escape(m.text))
   result.add "</pre>"
 
 proc renderRst(node: PRstNode, articlePrefix: string): string
@@ -66,7 +78,7 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
   of rnParagraph:
     result.add p(renderSons(node)) & "\n"
   of rnLeaf:
-    result.add node.text
+    result.add(xmltree.escape(node.text))
   of rnStandaloneHyperlink:
     let hyper = renderSons(node).replace("${prefix}", articlePrefix)
     result.add a(href=hyper, hyper)
@@ -89,6 +101,8 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
       assert false, "Unknown headline level: " & $node.level
   of rnInlineLiteral:
     result.add code(renderSons(node))
+  of rnLiteralBlock:
+    result.add renderLiteralBlock(node)
   of rnCodeBlock:
     result.add renderCodeBlock(node)
   of rnTransition:
