@@ -5,6 +5,13 @@ import os, times, strutils, algorithm, strtabs, parseutils, tables, xmltree
 
 import src/metadata, src/rstrender, src/config
 
+const
+  articleDir = "articles"
+  outputDir = "output"
+  staticDir = "static"
+  tagPagePrefix = "../"
+
+
 proc normalizeTitle(title: string): string =
   result = ""
   for i in title:
@@ -39,14 +46,27 @@ proc joinUrl(x: varargs[string]): string =
 
 proc genUrl(article: TArticleMetadata): string =
   # articles/2013/03/title.html
-  joinUrl("articles", format(article.date, "yyyy/MM"),
+  joinUrl(articleDir, format(article.date, "yyyy/MM"),
     article.title.normalizeTitle() & ".html")
 
 proc findArticles(): seq[string] =
   result = @[]
-  var dir = getCurrentDir() / "articles"
+  var dir = getCurrentDir() / articleDir
   for f in walkFiles(dir / "*.rst"):
     result.add(f)
+
+proc findStaticFiles(): seq[string] =
+  ## Returns a list of files in the static subdirectory.
+  ##
+  ## Unlike findArticles, the returned paths are not absoulte, they are
+  ## relative to the static directory. You need to prefix the results with
+  ## staticDir to reach the file.
+  result = @[]
+  const valid = {pcFile, pcLinkToFile, pcDir, pcLinkToDir}
+  let pruneLen = staticDir.len
+  for f in walkDirRec(staticDir, valid):
+    assert f.len > pruneLen + 1
+    result.add(f[pruneLen + 1 .. <f.len])
 
 include "layouts/articles.html" # TODO: Rename to articlelist.html?
 include "layouts/atom.xml"
@@ -83,29 +103,75 @@ proc createKeys(otherKeys: varargs[tuple[k, v: string]],
   for i in otherKeys:
     result[i.k] = i.v
 
+proc needsRefresh*(target: string, src: varargs[string]): bool =
+  ## Returns true if target is missing or src has newer modification date.
+  ##
+  ## Copied from
+  ## https://github.com/fowlmouth/nake/blob/078a99849a29a890fc22a14173ca4591a14dea86/nake.nim#L150
+  assert len(src) > 0, "Pass some parameters to check for"
+  var targetTime: float
+  try:
+    targetTime = toSeconds(getLastModificationTime(target))
+  except EOS:
+    return true
+
+  for s in src:
+    let srcTime = toSeconds(getLastModificationTime(s))
+    if srcTime > targetTime:
+      return true
+
+
+proc generateArticle(filename, dest, style: string, meta: TArticleMetadata,
+                     cfg: TConfig) =
+  ## Generates an html file from the rst `filename`.
+  ##
+  ## Pass as `dest` the relative final path of the input `filename`. `style` is
+  ## the name of one of the files in th layouts subdirectory.
+  let def = readFile(getCurrentDir() / "layouts" / style)
+  let date = format(meta.date, "dd/MM/yyyy HH:mm")
+  # Calculate prefix depending on the depth of `dest`.
+  var prefix = ""
+  for i in parentDirs(dest, inclusive = false): prefix = prefix / ".."
+  if prefix.len > 0: prefix.add(dirSep)
+  let tags = renderTags(meta.tags, prefix)
+  let output = replaceKeys(def,
+      {"title": meta.title, "date": date, 
+       "body": renderRst(meta.body, prefix),
+       "prefix": prefix, "tags": tags}.createKeys(cfg))
+  let path = getCurrentDir() / outputDir / dest
+  createDir(path.splitFile.dir)
+  
+  writeFile(path, output)
+
+proc generateStatic(cfg: TConfig) =
+  ## Generates rst files found in the static subdirectory.
+  ##
+  ## Non rst files will be copied as is.
+  let staticFilenames = findStaticFiles()
+  for i in staticFilenames:
+    let
+      src = staticDir / i
+      ext = i.splitFile.ext.toLower
+    if ext == ".rst":
+      let dest = changeFileExt(i, "html")
+      echo("Processing ", getCurrentDir() / outputDir / dest)
+      let meta = parseMetadata(src)
+      if meta.isDraft:
+        echo("  Article is a draft, omitting from article list.")
+        continue
+      generateArticle(src, dest, "static.html", meta, cfg)
+    else:
+      let dest = getCurrentDir() / outputDir / i
+      if dest.needsRefresh(src):
+        echo "Copying ", dest
+        createDir(dest.splitFile.dir)
+        copyFileWithPermissions(src, dest)
+
 proc generateDefault(mds: seq[TArticleMetadata], cfg: TConfig) =
   let def = readFile(getCurrentDir() / "layouts" / "default.html")
   let output = replaceKeys(def,
       {"body": renderArticles(mds, ""), "prefix": ""}.createKeys(cfg))
-  writeFile(getCurrentDir() / "output" / "index.html", output)
-
-const
-  articlePagePrefix = "../../../"
-  tagPagePrefix = "../"
-
-proc generateArticle(filename: string, meta: TArticleMetadata,
-                     cfg: TConfig) =
-  let def = readFile(getCurrentDir() / "layouts" / "article.html")
-  let date = format(meta.date, "dd/MM/yyyy HH:mm")
-  let tags = renderTags(meta.tags, articlePagePrefix)
-  let output = replaceKeys(def,
-      {"title": meta.title, "date": date, 
-       "body": renderRst(meta.body, articlePagePrefix),
-       "prefix": articlePagePrefix, "tags": tags}.createKeys(cfg))
-  let path = getCurrentDir() / "output" / genURL(meta)
-  createDir(path.splitFile.dir)
-  
-  writeFile(path, output)
+  writeFile(getCurrentDir() / outputDir / "index.html", output)
 
 proc sortArticles(articles: var seq[TArticleMetadata]) =
   articles.sort do (x, y: TArticleMetadata) -> int:
@@ -126,7 +192,7 @@ proc processArticles(cfg: TConfig): seq[TArticleMetadata] =
       result.add(meta)
     else:
       echo("  Article is a draft, omitting from article list.")
-    generateArticle(i, meta, cfg)
+    generateArticle(i, genURL(meta), "article.html", meta, cfg)
 
   # Sort articles from newest to oldest.
   sortArticles(result)
@@ -141,24 +207,25 @@ proc generateTagPages(meta: seq[TArticleMetadata], cfg: TConfig) =
       tags.mget(nt).add(a)
   
   let templ = readFile(getCurrentDir() / "layouts" / "tag.html")
-  createDir(getCurrentDir() / "output" / "tags")
+  createDir(getCurrentDir() / outputDir / "tags")
   for tag, articles in tags:
     var sorted = articles
     sortArticles(sorted)
     let output = replaceKeys(templ,
       {"body": renderArticles(sorted, tagPagePrefix), "tag": tag,
        "prefix": tagPagePrefix}.createKeys(cfg))
-    writeFile(getCurrentDir() / "output" / "tags" /
+    writeFile(getCurrentDir() / outputDir / "tags" /
               tag.addFileExt("html"), output)
 
 proc generateAtomFeed(meta: seq[TArticleMetadata], cfg: TConfig) =
   let feed = renderAtom(meta, cfg.title, cfg.url, joinUrl(cfg.url, "feed.xml"),
                         cfg.author)
-  writeFile(getCurrentDir() / "output" / "feed.xml", feed)
+  writeFile(getCurrentDir() / outputDir / "feed.xml", feed)
 
 when isMainModule:
   let cfg = parseConfig(getCurrentDir() / "ipsum.ini")
-  createDir(getCurrentDir() / "output")
+  createDir(getCurrentDir() / outputDir)
+  generateStatic(cfg)
   let articles = processArticles(cfg)
   generateDefault(articles, cfg)
   generateTagPages(articles, cfg)

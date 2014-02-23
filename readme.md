@@ -28,7 +28,9 @@ create the structure to hold your content:
 
 ```
 cd ~/projects
-mkdir -p super_website/articles super_website/layouts
+mkdir -p super_website/articles
+mkdir -p super_website/static
+mkdir -p super_website/layouts
 cd super_website
 ```
 
@@ -45,10 +47,17 @@ Save the article as: ``2013-08-18-gtk-plus-i-love-gtk-and-here-is-why.rst``, or
 something else, the filename doesn't really matter, *ipsum* does not care as
 long as they have an ``rst`` extension. All other extension files are ignored.
 
+Put static files in the ``static`` folder. If the file ends in ``.rst`` it has
+to have metadata like a normal article, but the generated html will keep the
+relative path instead of getting a generated one from the date+title. If the
+file doesn't end in ``.rst``, it will simply be copied to the output website
+directoy.
+
 You then need to create some layouts and put them into the layouts folder.
 You will need the following layouts:
 
 * article.html -- Template for an article.
+* static.html -- Template for a static file.
 * default.html -- Template for the index.html page, this includes the article
   list.
 * tag.html -- Template for the specific tag page, this will include a list of
