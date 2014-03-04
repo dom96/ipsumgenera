@@ -52,6 +52,30 @@ proc renderLiteralBlock(n: PRstNode): string =
     result.add(xmltree.escape(m.text))
   result.add "</pre>"
 
+proc renderRawDirective(n: PRstNode): string =
+  ## Renders all children leaf nodes as plain text without escaping.
+  ##
+  ## rnDirArg nodes are not rendered but verified to contain the string html.
+  ## If the string doesn't match, the rest of the tree is ignored and the proc
+  ## returns immediately.
+  result = ""
+  for i in n.sons:
+    if not i.isNil():
+      case i.kind
+      of rnLeaf:
+        assert (not i.text.isNil)
+        result.add(i.text)
+      of rnDirArg:
+        assert i.sons.len == 1
+        assert i.sons[0].kind == rnLeaf
+        assert (not i.sons[0].text.isNil)
+        let params = i.sons[0].text
+        if params != "html":
+          echo("Ignoring raw directive block '", params, "'")
+          return
+      else:
+        result.add renderRawDirective(i)
+
 proc renderRst(node: PRstNode, articlePrefix: string): string
 proc getFieldList(node: PRstNode, articlePrefix: string): PStringTable =
   assert node.kind == rnFieldList
@@ -128,6 +152,8 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
       result.add img(src=src, alt="")
   of rnFieldName, rnFieldBody:
     result.add(renderSons(node))
+  of rnRawHtml:
+    result.add(renderRawDirective(node))
   else:
     echo("Unknown node kind in rst: ", node.kind)
     doAssert false
