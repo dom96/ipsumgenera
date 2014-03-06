@@ -154,6 +154,22 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
     result.add(renderSons(node))
   of rnRawHtml:
     result.add(renderRawDirective(node))
+  of rnTable:
+    result.add "<table border=\"1\" class=\"docutils\">"
+    result.add renderSons(node)
+    result.add "</table>"
+  of rnTableRow:
+    result.add "<tr>"
+    result.add renderSons(node)
+    result.add "<tr>\n"
+  of rnTableDataCell:
+    result.add "<td>"
+    result.add renderSons(node)
+    result.add "<td>\n"
+  of rnTableHeaderCell:
+    result.add "<th>"
+    result.add renderSons(node)
+    result.add "<th>\n"
   else:
     echo("Unknown node kind in rst: ", node.kind)
     doAssert false
