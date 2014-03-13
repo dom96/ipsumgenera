@@ -144,11 +144,13 @@ proc generateArticle(filename, dest, style: string, meta: TArticleMetadata,
   
   writeFile(path, output)
 
-proc generateStatic(cfg: TConfig): seq[TArticleMetadata] =
-  ## Generates rst files found in the static subdirectory.
+proc processStatic(cfg: TConfig): seq[TArticleMetadata] =
+  ## Processes files found in the static subdirectory.
   ##
-  ## Non rst files will be copied as is. The proc will return the list of the
-  ## metadata for parsed rst files.
+  ## Non rst files will be copied as is, rst files will be processed with the
+  ## static template.
+  ##
+  ## The proc will return the list of the metadata for parsed rst files.
   result = @[]
   let staticFilenames = findStaticFiles()
   for i in staticFilenames:
@@ -230,7 +232,7 @@ when isMainModule:
   let cfg = parseConfig(getCurrentDir() / "ipsum.ini")
   createDir(getCurrentDir() / outputDir)
   let
-    staticMetadata = generateStatic(cfg)
+    staticMetadata = processStatic(cfg)
     blogMetadata = processArticles(cfg)
   generateDefault(blogMetadata, cfg)
   generateTagPages(concat(blogMetadata, staticMetadata), cfg)
