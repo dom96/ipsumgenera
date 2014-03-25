@@ -79,3 +79,4 @@ proc parseMetadata*(filename: string): TArticleMetadata =
   i.inc 3 # skip ---
   i.inc skipWhitespace(article, i)
   result.body = article[i .. -1]
+  if result.tags.isNil: result.tags = @[]

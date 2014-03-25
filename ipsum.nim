@@ -1,7 +1,8 @@
 # Copyright (C) 2013 Dominik Picheta
 # Licensed under MIT license.
 
-import os, times, strutils, algorithm, strtabs, parseutils, tables, xmltree
+import os, times, strutils, algorithm, strtabs, parseutils, tables, xmltree,
+  sequtils
 
 import src/metadata, src/rstrender, src/config
 
@@ -143,10 +144,14 @@ proc generateArticle(filename, dest, style: string, meta: TArticleMetadata,
   
   writeFile(path, output)
 
-proc generateStatic(cfg: TConfig) =
-  ## Generates rst files found in the static subdirectory.
+proc processStatic(cfg: TConfig): seq[TArticleMetadata] =
+  ## Processes files found in the static subdirectory.
   ##
-  ## Non rst files will be copied as is.
+  ## Non rst files will be copied as is, rst files will be processed with the
+  ## static template.
+  ##
+  ## The proc will return the list of the metadata for parsed rst files.
+  result = @[]
   let staticFilenames = findStaticFiles()
   for i in staticFilenames:
     let
@@ -159,6 +164,7 @@ proc generateStatic(cfg: TConfig) =
       if meta.isDraft:
         echo("  Article is a draft, omitting from article list.")
         continue
+      result.add(meta)
       generateArticle(src, dest, "static.html", meta, cfg)
     else:
       let dest = getCurrentDir() / outputDir / i
@@ -225,8 +231,9 @@ proc generateAtomFeed(meta: seq[TArticleMetadata], cfg: TConfig) =
 when isMainModule:
   let cfg = parseConfig(getCurrentDir() / "ipsum.ini")
   createDir(getCurrentDir() / outputDir)
-  generateStatic(cfg)
-  let articles = processArticles(cfg)
-  generateDefault(articles, cfg)
-  generateTagPages(articles, cfg)
-  generateAtomFeed(articles, cfg)
+  let
+    staticMetadata = processStatic(cfg)
+    blogMetadata = processArticles(cfg)
+  generateDefault(blogMetadata, cfg)
+  generateTagPages(concat(blogMetadata, staticMetadata), cfg)
+  generateAtomFeed(blogMetadata, cfg)
