@@ -1,4 +1,4 @@
-import rst, rstast, strutils, htmlgen, highlite, xmltree, strtabs
+import rst, rstast, strutils, htmlgen, highlite, xmltree, strtabs, os
 
 proc strRst(node: PRstNode, indent: int = 0): string =
   ## Internal proc for debugging.
@@ -76,25 +76,49 @@ proc renderRawDirective(n: PRstNode): string =
       else:
         result.add renderRawDirective(i)
 
-proc renderRst(node: PRstNode, articlePrefix: string): string
-proc getFieldList(node: PRstNode, articlePrefix: string): PStringTable =
+proc renderPrefixUrl(url, articlePrefix, absoluteUrls: string): string =
+  ## Adds a prefix to an url, optionally making it absolute.
+  ##
+  ## Returns `url` with instances of the ``${prefix}`` substring replaced with
+  ## `articlePrefix`.
+  ##
+  ## Additinally, if `absoluteUrls` is not the empty string, the resulting
+  ## value is checked for being an absolute path. If it is a relative path, it
+  ## will be *joined* with `absoluteUrls`.
+  result = url.replace("${prefix}", articlePrefix)
+  # Avoid absoluteUrls replacement if nil or emtpy string.
+  if absoluteUrls.isNil or absoluteUrls.len < 1: return
+  # Discard absolute urls using domain relative paths (aka "/foo/bar")
+  if result.len < 1 or result[0] == '/': return
+  # Discard absolute urls which contain the substring ":/".
+  let first = result.find({'/', ':'})
+  if first > 0 and first + 1 < result.len and
+      result[first] == ':' and result[first+1] == '/':
+    return
+  # If we reached here, it is a relative path.
+  result = absoluteUrls/result
+
+
+proc renderRst(node: PRstNode, articlePrefix, absoluteUrls: string): string
+proc getFieldList(node: PRstNode,
+                  articlePrefix, absoluteUrls: string): PStringTable =
   assert node.kind == rnFieldList
   result = newStringTable()
   for field in node.sons:
     assert field.kind == rnField
     assert field.sons[0].kind == rnFieldName
     assert field.sons[1].kind == rnFieldBody
-    let name = renderRst(field.sons[0], articlePrefix)
-    let value = renderRst(field.sons[1], articlePrefix)
+    let name = renderRst(field.sons[0], articlePrefix, absoluteUrls)
+    let value = renderRst(field.sons[1], articlePrefix, absoluteUrls)
     result[name] = value
 
-proc renderRst(node: PRstNode, articlePrefix: string): string =
+proc renderRst(node: PRstNode, articlePrefix, absoluteUrls: string): string =
   result = ""
   proc renderSons(father: PRstNode): string =
     result = ""
     for i in father.sons:
       if not i.isNil():
-        result.add renderRst(i, articlePrefix)
+        result.add renderRst(i, articlePrefix, absoluteUrls)
   
   case node.kind
   of rnInner:
@@ -104,10 +128,11 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
   of rnLeaf:
     result.add(xmltree.escape(node.text))
   of rnStandaloneHyperlink:
-    let hyper = renderSons(node).replace("${prefix}", articlePrefix)
+    let hyper = renderSons(node).renderPrefixUrl(articlePrefix, absoluteUrls)
     result.add a(href=hyper, hyper)
   of rnHyperLink:
-    let hyper = renderSons(node.sons[1]).replace("${prefix}", articlePrefix)
+    let hyper = renderSons(node.sons[1]).renderPrefixUrl(articlePrefix,
+                                                         absoluteUrls)
     result.add a(href=hyper, renderSons(node.sons[0]))
   of rnEmphasis:
     result.add span(style="font-style: italic;", renderSons(node))
@@ -138,9 +163,10 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
   of rnBulletItem:
     result.add li(renderSons(node))
   of rnImage:
-    let src = renderSons(node.sons[0]).replace("${prefix}", articlePrefix)
+    let src = renderSons(node.sons[0]).renderPrefixUrl(articlePrefix,
+                                                       absoluteUrls)
     if not node.sons[1].isNil() and node.sons[1].kind == rnFieldList:
-      let fieldList = getFieldList(node.sons[1], articlePrefix)
+      let fieldList = getFieldList(node.sons[1], articlePrefix, absoluteUrls)
       var style = ""
       for k, v in pairs(fieldList):
         case k
@@ -174,13 +200,32 @@ proc renderRst(node: PRstNode, articlePrefix: string): string =
     echo("Unknown node kind in rst: ", node.kind)
     doAssert false
 
-proc renderRst*(text: string, articlePrefix: string, filename = ""): string =
-  result = ""
+proc renderRst*(text: string, articlePrefix: string, filename = "",
+                absoluteUrls = ""): string =
+  ## Returns the rst `text` string as rendered HTML.
+  ##
+  ## The `articlePrefix` string will replace strings in the form ${prefix} in
+  ## the urls found in the rst `text`. You can pass here the absolute root URL
+  ## to where you will place all the generated HTML files so that you can write
+  ## links in the form ``${prefix}images/smiley.gif`` and they will resolve
+  ## correctly from every subdirectory.
+  ##
+  ## The `filename` parameter is used for ornamental purposes, if something
+  ## fails it will be displayed to the user there, but otherwise serves no real
+  ## purpose.
+  ##
+  ## The `absoluteUrls` is only used for RSS HTML generation. Different RSS
+  ## readers have different behaviours when resolving relative URLs, so if you
+  ## write a relative link to another article, most likely the RSS reader will
+  ## build an incorrect absolute URL. To avoid this, pass the absolute URL for
+  ## the directory where the generated HTML will be placed, and it will be
+  ## prepended automatically to all relative links. If you are generating
+  ## standalone HTML, pass the empty string to leave relative link unmodified.
   var hasToc = false
   var ast = rstParse(text, filename, 0, 0, hasToc,
                      {roSupportRawDirective, roSupportMarkdown})
   #echo strRst(ast)
-  result = renderRst(ast, articlePrefix)
+  result = renderRst(ast, articlePrefix, absoluteUrls)
 
 when isMainModule:
   import os, metadata
