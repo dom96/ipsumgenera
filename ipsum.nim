@@ -19,7 +19,7 @@ proc normalizeTitle(title: string): string =
     case i
     of ':', '-', '=', '*', '^', '%', '$', '#', '@', '!', '{', '}', '[', ']',
        '<', '>', ',', '.', '?', '|', '~', '\\', '/', '"', '\'':
-      nil
+      discard
     of '&': result.add "-and-"
     of '+': result.add "-plus-"
     of ' ': result.add '-'
