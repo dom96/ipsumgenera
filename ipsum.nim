@@ -50,6 +50,27 @@ proc genUrl(article: TArticleMetadata): string =
   joinUrl(articleDir, format(article.pubDate, "yyyy/MM"),
     article.title.normalizeTitle() & ".html")
 
+proc escapePath(s: string): string =
+  ## Escapes a path to be valid according to RFC 3987.
+  ##
+  ## This proc does not perform the full work of parsing and filtering a full
+  ## IRI, it is only used to filter local filename paths and escape their
+  ## possible unicode characters for inclusion as rss identifiers. If you pass
+  ## a full absolute URL, the scheme part will be malformed. A full correct
+  ## implementation would handle the different parts of the URL correctly.
+  ##
+  ## This is a variation of the algorithm found in cgi.URLencode. Unicode
+  ## characters are parsed correctly because Nimrod strings happen to be
+  ## encoded in UTF8 and the rfc specifies that the encoded bytes need to
+  ## translated to %HH format.
+  result = newStringOfCap(s.len + s.len shr 2) # assume 12% non-alnum-chars
+  for i in 0..s.len-1:
+    case s[i]
+    of 'a'..'z', 'A'..'Z', '0'..'9', '-', '.', '~', '/', '_': add(result, s[i])
+    else:
+      add(result, '%')
+      add(result, toHex(ord(s[i]), 2))
+
 proc findArticles(): seq[string] =
   result = @[]
   var dir = getCurrentDir() / articleDir
