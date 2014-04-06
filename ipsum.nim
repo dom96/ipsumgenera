@@ -247,6 +247,11 @@ proc generateTagPages(meta: seq[TArticleMetadata], cfg: TConfig) =
               tag.addFileExt("html"), output)
 
 proc generateAtomFeed(meta: seq[TArticleMetadata], cfg: TConfig) =
+  # Prunes the article sequence according to the configuration limit.
+  assert cfg.numRssEntries >= 0
+  var meta = meta
+  if meta.len > cfg.numRssEntries:
+    meta.delete(cfg.numRssEntries + 1, <meta.len)
   let feed = renderAtom(meta, cfg.title, cfg.url, joinUrl(cfg.url, "feed.xml"),
                         cfg.author)
   writeFile(getCurrentDir() / outputDir / "feed.xml", feed)

@@ -5,11 +5,13 @@ type
     title*: string
     url*: string
     author*: string
+    numRssEntries*: int
 
 proc initConfig(): TConfig =
   result.title = ""
   result.url = ""
   result.author = ""
+  result.numRssEntries = 10
 
 proc validateConfig(config: TConfig) =
   template ra(field: string) =
@@ -21,6 +23,9 @@ proc validateConfig(config: TConfig) =
     ra("author")
   if config.url == "":
     ra("url")
+  if config.numRssEntries < 0:
+    raise newException(EInvalidValue,
+      "The numRssEntries value can't be negative.")
 
 proc parseConfig*(filename: string): TConfig =
   if not filename.existsFile:
@@ -35,13 +40,15 @@ proc parseConfig*(filename: string): TConfig =
     of cfgSectionStart:
       raise newException(EInvalidValue, "No sections supported.")
     of cfgKeyValuePair, cfgOption:
-      case ev.key
+      case ev.key.normalize
       of "title":
         result.title = ev.value
       of "url":
         result.url = ev.value
       of "author":
         result.author = ev.value
+      of "numrssentries":
+        result.numRssEntries = ev.value.parseInt
     of cfgError:
       raise newException(EInvalidValue, ev.msg)
     of cfgEof:
