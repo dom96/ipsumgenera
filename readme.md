@@ -91,7 +91,12 @@ author = "Your Name"
 ```
 
 The information from this config is also available in your templates, the key
-names match the names in the config file.
+names match the names in the config file. Additional options you can add to the
+``ipsum.ini`` file:
+
+* ``numRssEntries`` - Integer with the maximum number of generated entries in
+  the rss feed. If you don't specify a value for this, the value ``10`` will be
+  used by default.
 
 Once you're done with the setup, simply execute ``ipsum`` and your blog should
 be generated before you can even blink!
