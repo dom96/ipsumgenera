@@ -47,7 +47,7 @@ proc joinUrl(x: varargs[string]): string =
 
 proc genUrl(article: TArticleMetadata): string =
   # articles/2013/03/title.html
-  joinUrl(articleDir, format(article.date, "yyyy/MM"),
+  joinUrl(articleDir, format(article.pubDate, "yyyy/MM"),
     article.title.normalizeTitle() & ".html")
 
 proc findArticles(): seq[string] =
@@ -128,16 +128,18 @@ proc generateArticle(filename, dest, style: string, meta: TArticleMetadata,
   ##
   ## Pass as `dest` the relative final path of the input `filename`. `style` is
   ## the name of one of the files in th layouts subdirectory.
-  let def = readFile(getCurrentDir() / "layouts" / style)
-  let date = format(meta.date, "dd/MM/yyyy HH:mm")
+  let
+    def = readFile(getCurrentDir() / "layouts" / style)
+    pubDate = format(meta.pubDate, "dd/MM/yyyy HH:mm")
+    modDate = format(meta.modDate, "dd/MM/yyyy HH:mm")
   # Calculate prefix depending on the depth of `dest`.
   var prefix = ""
   for i in parentDirs(dest, inclusive = false): prefix = prefix / ".."
   if prefix.len > 0: prefix.add(dirSep)
   let tags = renderTags(meta.tags, prefix)
   let output = replaceKeys(def,
-      {"title": meta.title, "date": date, 
-       "body": renderRst(meta.body, prefix),
+      {"title": meta.title, "date": pubDate, "pubDate": pubDate,
+       "modDate": modDate, "body": renderRst(meta.body, prefix),
        "prefix": prefix, "tags": tags}.createKeys(cfg))
   let path = getCurrentDir() / outputDir / dest
   createDir(path.splitFile.dir)
@@ -181,9 +183,9 @@ proc generateDefault(mds: seq[TArticleMetadata], cfg: TConfig) =
 
 proc sortArticles(articles: var seq[TArticleMetadata]) =
   articles.sort do (x, y: TArticleMetadata) -> int:
-    if TimeInfoToTime(x.date) > TimeInfoToTime(y.date):
+    if TimeInfoToTime(x.pubDate) > TimeInfoToTime(y.pubDate):
       -1
-    elif TimeInfoToTime(x.date) == TimeInfoToTime(y.date):
+    elif TimeInfoToTime(x.pubDate) == TimeInfoToTime(y.pubDate):
       0
     else:
       1
