@@ -10,14 +10,16 @@
   <generator>ipsumgenera</generator>
   <updated>${getTime().getGMTime().format("yyyy-MM-dd'T'HH:mm:ss'Z'")}</updated>
 # for a in meta:
+# let absoluteUrl = joinUrl(url, genURL(a))
+# let absoluteBase = splitPath(absoluteUrl).head
     <entry>
       <title>${a.title}</title>
-      <link rel="alternate" type="text/html" href="${joinUrl(url, genURL(a))}"/>
-      <id>${joinUrl(url, genURL(a))}</id>
+      <link rel="alternate" type="text/html" href="${absoluteUrl}"/>
+      <id>${absoluteUrl}</id>
       <updated>${a.date.format("yyyy-MM-dd'T'HH:mm:ss'Z'")}</updated>
       <author><name>${author}</name></author>
       <content type="html">
-        ${xmltree.escape(renderRst(a.body, url))}
+        ${xmltree.escape(renderRst(a.body, url, absoluteUrls = absoluteBase))}
       </content>
     </entry>
 # end for
