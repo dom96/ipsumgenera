@@ -1,9 +1,10 @@
-import strutils, times, parseutils
+import strutils, times, parseutils, os
 
 type
   TArticleMetadata* = object
     title*: string
-    date*: TTimeInfo
+    pubDate*: TTimeInfo
+    modDate*: TTimeInfo
     tags*: seq[string]
     isDraft*: bool
     body*: string
@@ -65,8 +66,10 @@ proc parseMetadata*(filename: string): TArticleMetadata =
       result.title = value
       if result.title[0] == '"' and result.title[result.title.len-1] == '"':
         result.title = result.title[1 .. -2]
-    of "date":
-      result.date = parseDate(value)
+    of "date", "pubdate":
+      result.pubDate = parseDate(value)
+    of "moddate":
+      result.modDate = parseDate(value)
     of "tags":
       result.tags = @[]
       for i in value.split(','):
@@ -80,3 +83,6 @@ proc parseMetadata*(filename: string): TArticleMetadata =
   i.inc skipWhitespace(article, i)
   result.body = article[i .. -1]
   if result.tags.isNil: result.tags = @[]
+  # Give last modification date as file timestamp if nothing else was found.
+  if result.modDate.year == 0:
+    result.modDate = filename.getLastModificationTime.getGMTime

@@ -71,13 +71,18 @@ these strings is ${key}, and the supported keys are:
   ``article.html`` this will be the actual article text.
 * ``${title}`` -- Article title in ``article.html``, otherwise the blog title
   from ``ipsum.ini``.
-* ``${date}`` -- Article date in ``article.html`` extracted from the metadata.
-  The date has to be in format **YYYY-MM-DD hh:mm**.
+* ``${date}`` or ``${pubDate}`` -- Article publication date in ``article.html``
+  extracted from the metadata.  The date has to be in format **YYYY-MM-DD
+  hh:mm**.
+* ``${modDate}`` -- Article modification date in ``article.html`` extracted
+  from the metadata, or if not available from the file's last modification
+  timestamp.
 * ``${prefix}`` -- The path to the root in ``article.html`` **only**.
 * ``${tag}`` -- The tag name, ``tag.html`` **only**.
 
-You will also need to create an ``ipsum.ini`` file, the file should contain
-the following information:
+Where ``article.html`` is mentioned, the same applies for ``static.html``. You
+will also need to create an ``ipsum.ini`` file, the file should contain the
+following information:
 
 ```ini
 title  = "Blog title here"
@@ -94,7 +99,10 @@ be generated before you can even blink!
 ## Metadata reference
 
 * ``title`` - Article title.
-* ``date`` - Date the article was written.
+* ``date`` or ``pubDate`` - Date the article was written.
+* ``modDate`` - Specifies a posterior date the article was updated. If you
+  don't specify this tag, it will be filled in with the file's last
+  modification timestamp.
 * ``tags`` - Tags belonging to the article.
 * ``draft`` - If ``true`` article will not be generated.
 
