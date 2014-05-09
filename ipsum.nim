@@ -155,8 +155,8 @@ proc generateArticle(filename, dest, style: string, meta: TArticleMetadata,
     modDate = format(meta.modDate, "dd/MM/yyyy HH:mm")
   # Calculate prefix depending on the depth of `dest`.
   var prefix = ""
-  for i in parentDirs(dest, inclusive = false): prefix = prefix / ".."
-  if prefix.len > 0: prefix.add(dirSep)
+  for i in parentDirs(dest, inclusive = false):
+     prefix = "../" & prefix
   let tags = renderTags(meta.tags, prefix)
   let output = replaceKeys(def,
       {"title": meta.title, "date": pubDate, "pubDate": pubDate,
