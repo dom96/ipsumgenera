@@ -158,9 +158,11 @@ proc renderRst(node: PRstNode, articlePrefix, absoluteUrls: string): string =
     result.add hr()
   of rnBlockquote:
     result.add blockquote(renderSons(node))
+  of rnEnumList:
+    result.add ol(renderSons(node))
   of rnBulletList:
     result.add ul(renderSons(node))
-  of rnBulletItem:
+  of rnBulletItem, rnEnumItem:
     result.add li(renderSons(node))
   of rnImage:
     let src = renderSons(node.sons[0]).renderPrefixUrl(articlePrefix,
