@@ -8,7 +8,7 @@ may just be willing to make this more user friendly.
 ## Quick manual
 
 To set up *ipsum* you first need to install [nimrod's nimble package
-manager](https://github.com/nimrod-code/nimble). Once you have that installed
+manager](https://github.com/nim-lang/nimble). Once you have that installed
 you can run:
 
 ```
