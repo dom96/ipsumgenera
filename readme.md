@@ -7,20 +7,20 @@ may just be willing to make this more user friendly.
 
 ## Quick manual
 
-To set up *ipsum* you first need to install [nimrod's babel package
-manager](https://github.com/nimrod-code/babel). Once you have that installed
+To set up *ipsum* you first need to install [nimrod's nimble package
+manager](https://github.com/nim-lang/nimble). Once you have that installed
 you can run:
 
 ```
 git clone https://github.com/dom96/ipsumgenera
 cd ipsumgenera
-babel install
+nimble install
 ```
 
-This will compile *ipsum* and copy it to your ``$babelDir/bin/`` directory. Add
+This will compile *ipsum* and copy it to your ``$nimbleDir/bin/`` directory. Add
 this directory to your ``$PATH`` environment variable so you can run *ipsum*
 anywhere.  In the future if you need to update your *ipsum* version you will
-need to refresh that checkout and run ``babel install`` again to overwrite your
+need to refresh that checkout and run ``nimble install`` again to overwrite your
 current copy.
 
 Now, go to the directory of your choice for storing your own website and
