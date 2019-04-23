@@ -15,7 +15,6 @@ type
     pubDate: bool
     modDate: bool
     tags: bool
-    isDraft: bool
     body: bool
 
 proc parseDate(val: string): DateTime =
@@ -68,7 +67,7 @@ proc parseMetadata*(filename: string): TArticleMetadata =
         meta.data.tags.add(i.strip)
     of "draft":
       let vn = value.normalize
-      isDraft := vn in ["t", "true", "y", "yes"]
+      meta.data.isDraft = vn in ["t", "true", "y", "yes"]
     else:
       raise newException(ValueError, "Unknown key: " & key)
   i.inc 3 # skip ---
@@ -78,5 +77,5 @@ proc parseMetadata*(filename: string): TArticleMetadata =
   if not meta.modDate:
     modDate := filename.getLastModificationTime.utc
 
-  doAssert(meta.progress == 6 or (meta.progress == 5 and not meta.isDraft))
+  doAssert(meta.progress == 5)
   return meta.data
