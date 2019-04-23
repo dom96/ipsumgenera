@@ -2,9 +2,9 @@
 # Licensed under MIT license.
 
 import os, times, strutils, algorithm, strtabs, parseutils, tables, xmltree,
-  sequtils
+  sequtils, unicode, unidecode
 
-import src/metadata, src/rstrender, src/config
+import metadata, rstrender, config
 
 const
   articleDir = "articles"
@@ -14,9 +14,8 @@ const
 
 
 proc normalizeTitle(title: string): string =
-  result = ""
-  for i in title:
-    case i
+  for i in title.unidecode.runes():
+    case char(i)
     of ':', '-', '=', '*', '^', '%', '$', '#', '@', '!', '{', '}', '[', ']',
        '<', '>', ',', '.', '?', '|', '~', '\\', '/', '"', '\'':
       discard
@@ -24,26 +23,24 @@ proc normalizeTitle(title: string): string =
     of '+': result.add "-plus-"
     of ' ': result.add '-'
     else:
-      result.add i.toLower()
+      result.add i.toLower.char()
 
 proc normalizeTag(tag: string): string =
-  result = ""
-  for i in tag:
+  for i in tag.runes():
     case i
-    of ' ':
+    of Rune(' '):
       result.add '-'
     else:
-      result.add i.toLower()
+      result.add i.toLower.toUTF8()
 
 proc joinUrl(x: varargs[string]): string =
-  result = ""
   for i in x:
     var cleanI = i
-    if cleanI[0] == '/': cleanI = cleanI[1 .. -1]
-    if cleanI.endsWith("/"): cleanI = cleanI[0 .. -2]
+    if cleanI[0] == '/': cleanI = cleanI[1 .. ^1]
+    if cleanI.endsWith("/"): cleanI = cleanI[0 .. ^2]
 
     result.add "/" & cleanI
-  result = result[1 .. -1] # Get rid of the / at the start.
+  result = result[1 .. ^1] # Get rid of the / at the start.
 
 proc genUrl(article: TArticleMetadata): string =
   # articles/2013/03/title.html
@@ -72,7 +69,6 @@ proc escapePath(s: string): string =
       add(result, toHex(ord(s[i]), 2))
 
 proc findArticles(): seq[string] =
-  result = @[]
   var dir = getCurrentDir() / articleDir
   for f in walkFiles(dir / "*.rst"):
     result.add(f)
@@ -83,20 +79,22 @@ proc findStaticFiles(): seq[string] =
   ## Unlike findArticles, the returned paths are not absoulte, they are
   ## relative to the static directory. You need to prefix the results with
   ## staticDir to reach the file.
-  result = @[]
   const valid = {pcFile, pcLinkToFile, pcDir, pcLinkToDir}
   let pruneLen = staticDir.len
   for f in walkDirRec(staticDir, valid):
     assert f.len > pruneLen + 1
-    result.add(f[pruneLen + 1 .. <f.len])
+    result.add(f[pruneLen + 1 ..< f.len])
 
-include "layouts/articles.html" # TODO: Rename to articlelist.html?
-include "layouts/atom.xml"
+include "../layouts/articles.html" # TODO: Rename to articlelist.html?
+include "../layouts/atom.xml"
+const defaultArticleLayout = staticRead("../layouts/article.html")
+const defaultStaticLayout = staticRead("../layouts/static.html")
+const defaultDefaultLayout = staticRead("../layouts/default.html")
+const defaultTagLayout = staticRead("../layouts/tag.html")
 
-proc replaceKeys(s: string, kv: PStringTable): string =
-  result = ""
+proc replaceKeys(s: string, kv: StringTableRef): string =
   var i = 0
-  while true:
+  while i < s.len:
     case s[i]
     of '\\':
       if s[i+1] == '$':
@@ -109,17 +107,15 @@ proc replaceKeys(s: string, kv: PStringTable): string =
       assert s[i+1] == '{'
       let key = captureBetween(s, '{', '}', i)
       if not hasKey(kv, key):
-        raise newException(EInvalidValue, "Key not found: " & key)
+        raise newException(ValueError, "Key not found: " & key)
       result.add(kv[key])
       i.inc key.len + 3
-    of '\0':
-      break
     else:
       result.add s[i]
       i.inc
 
 proc createKeys(otherKeys: varargs[tuple[k, v: string]],
-                cfg: TConfig): PStringTable =
+                cfg: TConfig): StringTableRef =
   result = newStringTable({"blog_title": cfg.title, "blog_url": cfg.url,
       "blog_author": cfg.author})
   for i in otherKeys:
@@ -131,14 +127,14 @@ proc needsRefresh*(target: string, src: varargs[string]): bool =
   ## Copied from
   ## https://github.com/fowlmouth/nake/blob/078a99849a29a890fc22a14173ca4591a14dea86/nake.nim#L150
   assert len(src) > 0, "Pass some parameters to check for"
-  var targetTime: float
+  var targetTime: int64
   try:
-    targetTime = toSeconds(getLastModificationTime(target))
-  except EOS:
+    targetTime = toUnix(getLastModificationTime(target))
+  except OSError:
     return true
 
   for s in src:
-    let srcTime = toSeconds(getLastModificationTime(s))
+    let srcTime = toUnix(getLastModificationTime(s))
     if srcTime > targetTime:
       return true
 
@@ -150,7 +146,19 @@ proc generateArticle(filename, dest, style: string, meta: TArticleMetadata,
   ## Pass as `dest` the relative final path of the input `filename`. `style` is
   ## the name of one of the files in th layouts subdirectory.
   let
-    def = readFile(getCurrentDir() / "layouts" / style)
+    def =
+      try:
+        readFile(getCurrentDir() / "layouts" / style)
+      except IOError:
+        case style
+        of "article.html":
+          echo("Using internal layouts/article.html")
+          defaultArticleLayout
+        of "static.html":
+          echo("Using internal layouts/static.html")
+          defaultStaticLayout
+        else:
+          raise
     pubDate = format(meta.pubDate, "dd/MM/yyyy HH:mm")
     modDate = format(meta.modDate, "dd/MM/yyyy HH:mm")
   # Calculate prefix depending on the depth of `dest`.
@@ -174,7 +182,6 @@ proc processStatic(cfg: TConfig): seq[TArticleMetadata] =
   ## static template.
   ##
   ## The proc will return the list of the metadata for parsed rst files.
-  result = @[]
   let staticFilenames = findStaticFiles()
   for i in staticFilenames:
     let
@@ -197,22 +204,26 @@ proc processStatic(cfg: TConfig): seq[TArticleMetadata] =
         copyFileWithPermissions(src, dest)
 
 proc generateDefault(mds: seq[TArticleMetadata], cfg: TConfig) =
-  let def = readFile(getCurrentDir() / "layouts" / "default.html")
+  let def =
+    try:
+      readFile(getCurrentDir() / "layouts" / "default.html")
+    except IOError:
+      echo("Using internal layouts/default.html")
+      defaultDefaultLayout
   let output = replaceKeys(def,
       {"body": renderArticles(mds, ""), "prefix": ""}.createKeys(cfg))
   writeFile(getCurrentDir() / outputDir / "index.html", output)
 
 proc sortArticles(articles: var seq[TArticleMetadata]) =
   articles.sort do (x, y: TArticleMetadata) -> int:
-    if TimeInfoToTime(x.pubDate) > TimeInfoToTime(y.pubDate):
+    if timeInfoToTime(x.pubDate) > timeInfoToTime(y.pubDate):
       -1
-    elif TimeInfoToTime(x.pubDate) == TimeInfoToTime(y.pubDate):
+    elif timeInfoToTime(x.pubDate) == timeInfoToTime(y.pubDate):
       0
     else:
       1
 
 proc processArticles(cfg: TConfig): seq[TArticleMetadata] =
-  result = @[]
   let articleFilenames = findArticles()
   for i in articleFilenames:
     echo("Processing ", i)
@@ -235,7 +246,12 @@ proc generateTagPages(meta: seq[TArticleMetadata], cfg: TConfig) =
         tags[nt] = @[]
       tags.mget(nt).add(a)
   
-  let templ = readFile(getCurrentDir() / "layouts" / "tag.html")
+  let templ =
+    try:
+      readFile(getCurrentDir() / "layouts" / "tag.html")
+    except IOError:
+      echo("Using internal layouts/tag.html")
+      defaultTagLayout
   createDir(getCurrentDir() / outputDir / "tags")
   for tag, articles in tags:
     var sorted = articles

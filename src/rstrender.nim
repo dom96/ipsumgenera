@@ -1,25 +1,24 @@
-import rst, rstast, strutils, htmlgen, highlite, xmltree, strtabs, os
+import packages/docutils/rst, packages/docutils/rstast, packages/docutils/highlite
+import strutils, htmlgen, xmltree, strtabs, os
 
 proc strRst(node: PRstNode, indent: int = 0): string =
   ## Internal proc for debugging.
-  result = ""
-  result.add(repeatChar(indent) & $node.kind & "(t: " & (if node.text != nil: node.text else: "") & ", l=" & $node.level & ")" & "\n")
+  result.add(repeat(' ', indent) & $node.kind & "(t: " & node.text & ", l=" & $node.level & ")" & "\n")
   if node.sons.len > 0:
     for i in node.sons:
       if i == nil:
-        result.add(repeatChar(indent + 2) & "NIL SON!!!\n"); continue
+        result.add(repeat(' ', indent + 2) & "NIL SON!!!\n"); continue
       result.add strRst(i, indent + 2)
 
 proc renderCodeBlock(n: PRstNode): string =
   ## Renders a block with code syntax highlighting.
-  result = ""
   if n.sons[2] == nil: return
   var m = n.sons[2].sons[0]
   assert m.kind == rnLeaf
   var langstr = strip(getArgument(n))
-  var lang: TSourceLanguage
+  var lang: SourceLanguage
   if langstr == "":
-    lang = langNimrod # default language
+    lang = langNim # default language
   else:
     lang = getSourceLanguage(langstr)
   
@@ -28,7 +27,7 @@ proc renderCodeBlock(n: PRstNode): string =
     echo("[Warning] Unsupported language: " & langstr)
     result.add(xmltree.escape(m.text))
   else:
-    var g: TGeneralTokenizer
+    var g: GeneralTokenizer
     initGeneralTokenizer(g, m.text)
     while true:
       getNextToken(g, lang)
@@ -44,7 +43,6 @@ proc renderCodeBlock(n: PRstNode): string =
 
 proc renderLiteralBlock(n: PRstNode): string =
   ## Renders a plain literal block.
-  result = ""
   if len(n.sons) < 1: return
   result.add "<pre class='literal'>"
   for m in n.sons:
@@ -58,17 +56,14 @@ proc renderRawDirective(n: PRstNode): string =
   ## rnDirArg nodes are not rendered but verified to contain the string html.
   ## If the string doesn't match, the rest of the tree is ignored and the proc
   ## returns immediately.
-  result = ""
   for i in n.sons:
     if not i.isNil():
       case i.kind
       of rnLeaf:
-        assert (not i.text.isNil)
         result.add(i.text)
       of rnDirArg:
         assert i.sons.len == 1
         assert i.sons[0].kind == rnLeaf
-        assert (not i.sons[0].text.isNil)
         let params = i.sons[0].text
         if params != "html":
           echo("Ignoring raw directive block '", params, "'")
@@ -87,7 +82,7 @@ proc renderPrefixUrl(url, articlePrefix, absoluteUrls: string): string =
   ## will be *joined* with `absoluteUrls`.
   result = url.replace("${prefix}", articlePrefix)
   # Avoid absoluteUrls replacement if nil or emtpy string.
-  if absoluteUrls.isNil or absoluteUrls.len < 1: return
+  if absoluteUrls.len < 1: return
   # Discard absolute urls using domain relative paths (aka "/foo/bar")
   if result.len < 1 or result[0] == '/': return
   # Discard absolute urls which contain the substring ":/".
@@ -101,7 +96,7 @@ proc renderPrefixUrl(url, articlePrefix, absoluteUrls: string): string =
 
 proc renderRst(node: PRstNode, articlePrefix, absoluteUrls: string): string
 proc getFieldList(node: PRstNode,
-                  articlePrefix, absoluteUrls: string): PStringTable =
+                  articlePrefix, absoluteUrls: string): StringTableRef =
   assert node.kind == rnFieldList
   result = newStringTable()
   for field in node.sons:
@@ -113,9 +108,7 @@ proc getFieldList(node: PRstNode,
     result[name] = value
 
 proc renderRst(node: PRstNode, articlePrefix, absoluteUrls: string): string =
-  result = ""
   proc renderSons(father: PRstNode): string =
-    result = ""
     for i in father.sons:
       if not i.isNil():
         result.add renderRst(i, articlePrefix, absoluteUrls)
@@ -174,7 +167,7 @@ proc renderRst(node: PRstNode, articlePrefix, absoluteUrls: string): string =
         case k
         of "height", "width":
           style.add("$1: $2;" % [k, v])
-        else: raise newException(EInvalidValue, "Invalid field name for image.")
+        else: raise newException(ValueError, "Invalid field name for image.")
       result.add "<img src='$1' style='$2'/>" % [src, style]
     else:
       result.add img(src=src, alt="")
@@ -234,4 +227,4 @@ when isMainModule:
   var i = 0
   var filename = getCurrentDir().parentDir() / "articles" / "2013-03-13-gtk-plus-a-method-to-guarantee-scrolling.rst"
   discard parseMetadata(filename, i)
-  echo renderRst(readFile(filename)[i .. -1], filename)
+  echo renderRst(readFile(filename)[i .. ^1], filename)

@@ -3,45 +3,36 @@ import strutils, times, parseutils, os
 type
   TArticleMetadata* = object
     title*: string
-    pubDate*: TTimeInfo
-    modDate*: TTimeInfo
+    pubDate*: DateTime
+    modDate*: DateTime
     tags*: seq[string]
     isDraft*: bool
     body*: string
+  MetadataInProgress = object
+    data: TArticleMetadata
+    progress: int
+    title: bool
+    pubDate: bool
+    modDate: bool
+    tags: bool
+    body: bool
 
-proc parseDate(val: string): TTimeInfo =
-  # YYYY-mm-dd hh:mm
-  var i = 0
-  var
-    year = ""
-    month = ""
-    day = ""
-    hour = ""
-    minute = ""
-  i.inc parseUntil(val, year, '-', i)
-  i.inc
-  i.inc parseUntil(val, month, '-', i)
-  i.inc
-  i.inc parseUntil(val, day, ' ', i)
-  i.inc
-  i.inc parseUntil(val, hour, ':', i)
-  i.inc
-  minute = val[i .. -1]
-  result.year = parseInt(year)
-  result.month = (parseInt(month)-1).TMonth
-  result.monthday = parseInt(day)
-  result.hour = parseInt(hour)
-  result.minute = parseInt(minute)
-  result.tzname = "UTC"
-  let t = TimeInfoToTime(result)
-  result = getGMTime(t)
+proc parseDate(val: string): DateTime =
+  parse(val, "yyyy-MM-dd HH:mm:ss", utc())
 
 proc parseMetadata*(filename: string): TArticleMetadata =
+  var meta = MetadataInProgress(data: TArticleMetadata(pubDate: now(), modDate: now()))
+  template `:=`(a, b: untyped): untyped =
+    assert(not meta.a)
+    meta.data.a = b
+    meta.a = true
+    inc meta.progress
+
   let article = readFile(filename)
   var i = 0
   i.inc skip(article, "---", i)
   if i == 0:
-    raise newException(EInvalidValue,
+    raise newException(ValueError,
           "Article must begin with '---' signifying meta data.")
   i.inc skipWhitespace(article, i)
   while true:
@@ -54,7 +45,7 @@ proc parseMetadata*(filename: string): TArticleMetadata =
     var key = ""
     i.inc parseUntil(article, key, {':'} + Whitespace, i)
     if article[i] != ':':
-      raise newException(EInvalidValue, "Expected ':' after key in meta data.")
+      raise newException(ValueError, "Expected ':' after key in meta data.")
     i.inc # skip :
     i.inc skipWhitespace(article, i)
     
@@ -63,26 +54,28 @@ proc parseMetadata*(filename: string): TArticleMetadata =
     i.inc skipWhitespace(article, i)
     case key.normalize
     of "title":
-      result.title = value
-      if result.title[0] == '"' and result.title[result.title.len-1] == '"':
-        result.title = result.title[1 .. -2]
+      if value[0] == '"' and value[^1] == '"':
+        value = value[1 .. ^2]
+      title := value
     of "date", "pubdate":
-      result.pubDate = parseDate(value)
+      pubDate := parseDate(value)
     of "moddate":
-      result.modDate = parseDate(value)
+      modDate := parseDate(value)
     of "tags":
-      result.tags = @[]
+      tags := @[]
       for i in value.split(','):
-        result.tags.add(i.strip)
+        meta.data.tags.add(i.strip)
     of "draft":
       let vn = value.normalize
-      result.isDraft = vn in ["t", "true", "y", "yes"]
+      meta.data.isDraft = vn in ["t", "true", "y", "yes"]
     else:
-      raise newException(EInvalidValue, "Unknown key: " & key)
+      raise newException(ValueError, "Unknown key: " & key)
   i.inc 3 # skip ---
   i.inc skipWhitespace(article, i)
-  result.body = article[i .. -1]
-  if result.tags.isNil: result.tags = @[]
+  body := article[i .. ^1]
   # Give last modification date as file timestamp if nothing else was found.
-  if result.modDate.year == 0:
-    result.modDate = filename.getLastModificationTime.getGMTime
+  if not meta.modDate:
+    modDate := filename.getLastModificationTime.utc
+
+  doAssert(meta.progress == 5)
+  return meta.data

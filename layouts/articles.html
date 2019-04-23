@@ -1,6 +1,5 @@
-#! stdtmpl
+#? stdtmpl(subsChar = '$', metaChar = '#')
 #proc renderArticles(articles: seq[TArticleMetadata], prefix: string): string =
-#  result = ""
 <table id="articles">
 #  for a in articles:
     <tr>
@@ -12,7 +11,6 @@
 #end proc
 #
 #proc renderTags(tags: seq[string], prefix: string): string =
-#  result = ""
 #  for i in 0..tags.len-1:
     <a href="${prefix}tags/${tags[i].normalizeTag}.html">${tags[i]}</a>
     ${if i < tags.len-1: "," else: ""}
