@@ -15,7 +15,7 @@ proc initConfig(): TConfig =
 
 proc validateConfig(config: TConfig) =
   template ra(field: string) =
-    raise newException(EInvalidValue,
+    raise newException(ValueError,
       "You need to specify the '$1' field in the config." % field)
   if config.title == "":
     ra("title")
@@ -24,21 +24,21 @@ proc validateConfig(config: TConfig) =
   if config.url == "":
     ra("url")
   if config.numRssEntries < 0:
-    raise newException(EInvalidValue,
+    raise newException(ValueError,
       "The numRssEntries value can't be negative.")
 
 proc parseConfig*(filename: string): TConfig =
   if not filename.existsFile:
-    raise newException(EInvalidValue, "Missing '" & filename & "'")
+    raise newException(ValueError, "Missing '" & filename & "'")
   result = initConfig()
   var file = newFileStream(filename, fmRead)
-  var cfg: TCfgParser
+  var cfg: CfgParser
   open(cfg, file, filename)
   while true:
     let ev = cfg.next()
     case ev.kind
     of cfgSectionStart:
-      raise newException(EInvalidValue, "No sections supported.")
+      raise newException(ValueError, "No sections supported.")
     of cfgKeyValuePair, cfgOption:
       case ev.key.normalize
       of "title":
@@ -50,7 +50,7 @@ proc parseConfig*(filename: string): TConfig =
       of "numrssentries":
         result.numRssEntries = ev.value.parseInt
     of cfgError:
-      raise newException(EInvalidValue, ev.msg)
+      raise newException(ValueError, ev.msg)
     of cfgEof:
       break
   cfg.close()

@@ -1,6 +1,5 @@
-#! stdtmpl
+#? stdtmpl(subsChar = '$', metaChar = '#')
 #proc renderAtom(meta: seq[TArticleMetadata], title, url, feedUrl, author: string): string =
-#   result = ""
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <title>${title}</title>
@@ -8,7 +7,7 @@
   <link href="${feedUrl}" rel="self" />
   <id>${url}</id>
   <generator>ipsumgenera</generator>
-  <updated>${getTime().getGMTime().format("yyyy-MM-dd'T'HH:mm:ss'Z'")}</updated>
+  <updated>${getTime().utc().format("yyyy-MM-dd'T'HH:mm:ss'Z'")}</updated>
 # for a in meta:
 # let absoluteUrl = joinUrl(url, escapePath(genURL(a)))
 # let absoluteBase = splitPath(absoluteUrl).head

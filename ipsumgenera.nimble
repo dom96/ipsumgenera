@@ -1,8 +1,8 @@
-[Package]
-name          = "ipsumgenera"
-version       = "0.1.0"
+version       = "0.1.1"
 author        = "Dominik Picheta"
 description   = "A static blog generator."
 license       = "MIT"
+srcDir        = "src"
+bin           = @["ipsum"]
 
-bin = "ipsum"
+requires "nim >= 0.19.4"
